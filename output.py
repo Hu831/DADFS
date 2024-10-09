@@ -9,7 +9,7 @@ Author: Guannan Hu
 import numpy as np
 import pandas as pd
 
-def output(DFS_Ya, DFS_d_act, DFS_d_theo, DFS_w_avg, DFS_d_alt, count, erra, save, distrib, N, Nd, r, DA_method, rseed_obs, l_o, ylon, ylat):
+def output(DFS_Ya, DFS_d_act, DFS_d_theo, DFS_w_avg, DFS_d_alt, count, erra, save, distrib, N, Nd, r, DA_method, rseed_obs, corr_o, l_o, ylon, ylat):
     """Print and save results.
     
     Parameters
@@ -61,27 +61,30 @@ def output(DFS_Ya, DFS_d_act, DFS_d_theo, DFS_w_avg, DFS_d_alt, count, erra, sav
     print('DFS_d_theo:', sum(DFS_d_theo / count))
     print('DFS_w:', sum(DFS_w_avg / count))
     print('DFS_d_alt:', sum(DFS_d_alt / count))
-    
     print('-----')
     print('Analysis RMSE:', np.mean(erra))
 
     # Save data
     if save == 1:
-        
-        # Form the filename for saving data
-        filename = 'dist' + str(distrib) + '_N' + str(N) + '_Nd' + str(Nd) + \
-            '_r' + str(r) + '_' + DA_method + '_' + str(rseed_obs) + '.csv'
-        
-        if l_o != 0:
-            
-           filename = 'dist' + str(distrib) + '_N' + str(N) + '_Nd' + str(Nd) + \
-           '_r' + str(r) + '_' + DA_method + '_' + str(l_o) + 'km_' + str(rseed_obs) + '.csv'
-        
+
         # Put data into a pandas data frame
-        df = pd.DataFrame({'lon': ylon,'lat': ylat, 'Ya': DFS_Ya,
-                            'w': DFS_w_avg,'d_theo': DFS_d_theo, 'd_act': DFS_d_act, 'd_alt': DFS_d_alt,
-                            'count': count, "erra": np.mean(erra)})
+        df = pd.DataFrame({
+            'lon': ylon,
+            'lat': ylat, 
+            'Ya': DFS_Ya,
+            'w': DFS_w_avg,
+            'd_theo': DFS_d_theo, 
+            'd_act': DFS_d_act, 
+            'd_alt': DFS_d_alt,
+            'count': count,
+            "erra": np.mean(erra)
+        })
         
+        filename = f'DFS_dist{distrib}_N{N}_Nd{Nd}_r{r}_{DA_method}_{rseed_obs}.csv'
+        if corr_o != 'diag':
+            filename = f'DFS_dist{distrib}_N{N}_Nd{Nd}_r{r}_{DA_method}_{l_o}km_{rseed_obs}.csv'
+
+
         print('-----')
         print('Saved to:', filename)
 
