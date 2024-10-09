@@ -3,7 +3,7 @@
 Data assimilation and degrees of freedom for signal (DFS) experiments. These experiments are carried out for the work submitted to the Journal of Advances in Modeling Earth Systems (JAMES). Please contact guannan.hu@reading.ac.uk for any questions on the use of these experiments.
 ## How to use
 ***
-Run the '''main_exps.py''' file with different parameters.
+Run the '''main_dadfs.py''' file with different parameters.
 ## Data assimilation algorithms
 ***
 The local ensemble transform Kalman filter (LETKF) and the ensemble Kalman filter (EnKF).
