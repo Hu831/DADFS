@@ -37,5 +37,5 @@ def H_operator_linear(lon, lat, data, interpolator):
         if interpolator == 'linear':
             return LinearNDInterpolator(list(zip(lon, lat)), data)
             
-        if interpolator == 'nearest' or len(lon) == 1:
+        if interpolator == 'nearest':
             return NearestNDInterpolator(list(zip(lon, lat)), data)
