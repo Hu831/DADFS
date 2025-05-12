@@ -1,6 +1,6 @@
 # DADFS
 ***
-**Data assimilation and degrees of freedom for signal (DFS) experiments**
+**Data assimilation (DA) and degrees of freedom for signal (DFS) experiments**
 
 This repository contains code for conducting data assimilation and DFS experiments as described in the submitted paper (Hu et al., 2025).
 
