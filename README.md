@@ -2,7 +2,7 @@
 ***
 **Data assimilation (DA) and degrees of freedom for signal (DFS) experiments**
 
-This repository contains code for conducting data assimilation and DFS experiments as described in the submitted paper (Hu et al., 2025).
+This repository contains code for conducting DA and DFS experiments as described in a submitted paper (Hu et al., 2025).
 
 For any questions regarding the use of this code or experiments, please contact **guannan.hu@reading.ac.uk**.
 
@@ -14,9 +14,9 @@ Run the `main_dadfs.py` file with different parameter settings to reproduce the 
 
 ---
 
-## Data assimilation algorithms
+## DA algorithms
 ***
-This project implements the following data assimilation algorithms:
+This project implements the following DA algorithms:
 
 - **Local Ensemble Transform Kalman Filter (LETKF)**  
   Hunt, B. R., Kostelich, E. J., & Szunyogh, I. (2007). Efficient data assimilation for spatiotemporal chaos: A local ensemble transform Kalman filter. *Physica D: Nonlinear Phenomena*, 230(1), 112–126. https://doi.org/10.1016/j.physd.2006.11.008
@@ -28,6 +28,6 @@ This project implements the following data assimilation algorithms:
 
 ## Approaches for estimating the DFS
 ***
-Several approaches are implemented to estimate both the theoretical and actual Degrees of Freedom for Signal (DFS), as described in the submitted paper. These include both novel approaches proposed by the authors and established approaches from the literature.
+Several approaches are implemented to estimate both the theoretical and actual DFS, as described in the submitted paper. These include both novel approaches proposed by the authors and established approaches from the literature.
 
 In addition, the code includes a new strategy proposed by the authors for efficiently implementing DFS estimation approaches in the presence of domain localization.
