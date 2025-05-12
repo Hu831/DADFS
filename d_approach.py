@@ -1,17 +1,12 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-The innovation-based approach for estimating the DFS
-
-Author: Guannan Hu
-"""
-
 import numpy as np
-from numpy import linalg as LA
+from numpy.linalg import eigh, inv
 
-def d_approach(n, nobs, N, xlon, xlat, ylon, ylat, omb, amb, oma, obs_indices, Nd, R):
-    """ Estimate the DFS using the innovation (O-B), residual (O-A) and 
-    observation-space increment (A-B) vectors.
+def d_approach(n, nobs, omb, amb, oma, obs_indices, Nd, R):
+    """
+    Estimate DFS using innovation-based approaches.
+
+    This function computes theoretical and actual DFS using the innovation (O-B), 
+    residual (O-A), and observation-space increment (A-B) vectors. 
     
     Parameters
     ----------
@@ -19,41 +14,27 @@ def d_approach(n, nobs, N, xlon, xlat, ylon, ylat, omb, amb, oma, obs_indices, N
         Number of model grid points.
     nobs : int
         Number of observations.
-    N : int
-        Ensemble size.
-    xlon : n x 1 array
-        Longitudes of model grid points.
-    xlat : n x 1 array
-        Latitude of model grid points.
-    ylon : nobs x 1 array
-        Longitudes of observations.
-    ylat : nobs x 1 array
-        Latitudes of observations.
+    omb : ndarray of shape (Nd, nobs)
+        Sample of innovation vectors (observation - background).
+    amb : ndarray of shape (Nd, nobs)
+        Sample of observation-space increments (analysis - background).
+    oma : ndarray of shape (Nd, nobs)
+        Sample of residuals (observation - analysis).
+    obs_indices : ndarray of shape (n, nobs)
+        Binary localization mask; 1 if obs i is used at grid point l.
     Nd : int
-        Size of the sample of the innovation (O-B), residual (O-A) and 
-        observation-space increment (A-B) vectors.
-    omb : Nd x nobs array
-        The innovation (O-B) vector.
-    oma : Nd x nobs array
-        The residual (O-A) vector.
-    amb : Nd x nobs array
-        The observation-space increment vector.    
-    obs_indices : n x nobs matrix
-        Contain 1s and 0s
-        The (l,i)th element is 1 if the ith observation is used for the lth 
-        grid point, and 0 otherwise.
-    R : nobs x nobs array
-        The observation error covariance matrix.
+        Sample size of omb/amb/oma.
+    R : ndarray of shape (nobs, nobs)
+        Observation error covariance matrix.
 
     Returns
     -------
-    DFS_d_theo : nobs x 1 array
-        The theoretical DFS estimated using the original innovation-based 
-        approach.
-    DFS_d_act : nobs x 1 array
-        The actual DFS estimated using the original innovation-based approach.
-    DFS_d_alt : nobs x 1 array
-        The theoretical DFS estimated using the new innovation-based approach.
+    DFS_d_theo : ndarray of shape (nobs,)
+        Theoretical DFS (original innovation-based approach).
+    DFS_d_act : ndarray of shape (nobs,)
+        Actual DFS 
+    DFS_d_alt : ndarray of shape (nobs,)
+        Theoretical DFS (alternative innovation-based approach).
     """
         
     DFS_d_theo = np.zeros(nobs)      
@@ -61,46 +42,48 @@ def d_approach(n, nobs, N, xlon, xlat, ylon, ylat, omb, amb, oma, obs_indices, N
     DFS_d_alt  = np.zeros(nobs)
 
     for l in range(n):
-    
-        if obs_indices[l,:].any():
-        
-            # Indices of observations selected for the l-th model grid point
+        if obs_indices[l, :].any():
+            # Extract relevant observation indices for this grid point
             index = np.nonzero(obs_indices[l,:])[0]
+            k = len(index)
                         
-            exp_up = np.zeros((len(index),len(index)))
-            exp_down = np.zeros((len(index),len(index)))
+            # Initialize expectation matrices for numerator/denominator terms
+            exp_up = np.zeros((k, k))
+            exp_down = np.zeros((k, k))
+            exp_up_alt = np.zeros((k, k))
+            exp_down_alt = np.zeros((k, k))
             
-            exp_up_alt = np.zeros((len(index),len(index)))
-            exp_down_alt =np.zeros((len(index),len(index)))
-            
-            R_l = R[index,:][:,index]
-            val, vec = LA.eigh(R_l)
-            sqrt_invR_l = vec @ np.diag(np.sqrt(1.0/val)) @ vec.T
+            # Square-root inverse of local R
+            R_l = R[np.ix_(index, index)]
+            val, vec = eigh(R_l)
+            sqrt_invR_l = vec @ np.diag(np.sqrt(1.0 / val)) @ vec.T
                     
             for j in range(Nd):
+                # Normalize obs-space vectors
+                omb_l = sqrt_invR_l @ omb[j, index]
+                amb_l = sqrt_invR_l @ amb[j, index]
+                oma_l = sqrt_invR_l @ oma[j, index]
                 
-                omb_l = sqrt_invR_l @ omb[j,index] 
-                amb_l = sqrt_invR_l @ amb[j,index] 
-                oma_l = sqrt_invR_l @ oma[j,index] 
-                
-                exp_up   += np.outer(amb_l, oma_l)
+                # Compute expected matrices
+                exp_up += np.outer(amb_l, oma_l)
                 exp_down += np.outer(omb_l, oma_l)
                 
-                exp_up_alt   += np.outer(amb_l, omb_l)
+                exp_up_alt += np.outer(amb_l, omb_l)
                 exp_down_alt += np.outer(omb_l, omb_l)
         
+            # Average over Nd samples
             exp_up /= Nd
             exp_down /= Nd
             exp_up_alt /= Nd
             exp_down_alt /= Nd
-        
-            work = exp_up @ LA.inv(exp_down)
-                     
-            work_alt = exp_up_alt @ LA.inv(exp_down_alt)
             
-            for i in range(len(index)):
-                DFS_d_act[index[i]]  += exp_up[i,i]
-                DFS_d_theo[index[i]] += work[i,i]
-                DFS_d_alt[index[i]]  += work_alt[i,i]
+            # Invert and compute DFS estimates
+            work = exp_up @ inv(exp_down)
+            work_alt = exp_up_alt @ inv(exp_down_alt)
+            
+            for i in range(k):
+                DFS_d_act[index[i]] += exp_up[i, i]     # actual
+                DFS_d_theo[index[i]] += work[i, i]      # theoretical original
+                DFS_d_alt[index[i]] += work_alt[i, i]   # theoretical alternative
 
-    return(DFS_d_theo, DFS_d_act, DFS_d_alt)
+    return DFS_d_theo, DFS_d_act, DFS_d_alt
