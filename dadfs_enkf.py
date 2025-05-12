@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Perform the EnKF and estimate the DFS
-
-Author: Guannan Hu
-"""
-
 import numpy as np
 from numpy.linalg import inv
 
@@ -13,113 +5,108 @@ from enkf import enkf
 from innovation import innovation
 from H_operator_linear import H_operator_linear
 from generate_ensemble_members import generate_ensemble_members
+from get_local_matrices import get_local_matrices
 
-def dadfs_enkf(n, nobs, N, xlon, xlat, ylon, ylat, Xb, Yb, B, R, obs_indices, interpolator, option):
-    """Perform the EnKF, obtain the innovation (O-B), residual (O-A) and 
-    increment (A-B) vectors, and estimate the DFS using background ensemble 
-    perturbations.
-    
+def dadfs_enkf(args, grid, nens, Xb, Yb, B, R, obs_indices, option):
+    """
+    Perform EnKF update and estimate Degrees of Freedom for Signal (DFS).
+
+    Depending on the selected option, this function either:
+    - Estimates the theoretical DFS using background ensemble perturbations,
+    - Or returns innovation, residual and increment vectors.
+
     Parameters
     ----------
-    n : int
-        Number of model grid points.
-    nobs : int
-        Number of observations.
-    N : int
+    args : ExperimentConfig
+        Configuration object containing global experiment settings, including:
+        - n : int
+            Number of model grid points.
+        - interpolator : str
+            Observation operator interpolation method ('linear' or 'nearest').
+
+    grid : dict
+        Dictionary containing spatial coordinates and observation count:
+        - 'xlon', 'xlat' : model grid point longitudes and latitudes.
+        - 'ylon', 'ylat' : observation point longitudes and latitudes.
+        - 'nobs' : number of observations.
+        
+    nens : int
         Ensemble size.
-    xlon : n x 1 array
-        Longitudes of model grid points.
-    xlat : n x 1 array
-        Latitude of model grid points.
-    ylon : nobs x 1 array
-        Longitudes of observations.
-    ylat : nobs x 1 array
-        Latitudes of observations.
-    Xb : n x N array
-        The background ensemble perturbation matrix.
-    Yb : nobs x N array
-        The background ensemble perturbation matrix in observation space.
-    B : n x n array
-        The background error covariance matrix.
-    R : nobs x nobs array
-        The observation error covariance matrix.
-    obs_indices : n x nobs matrix
-        Contain 1s and 0s
-        The (l,i)th element is 1 if the ith observation is used for the lth 
-        grid point, and 0 otherwise.
-    interpolator : str
-        'linear' or 'nearest'
-        Interpolation; Observation operator.
+    Xb : ndarray of shape (n, N)
+        Background ensemble perturbation matrix.
+    Yb : ndarray of shape (nobs, N)
+        Background ensemble perturbation matrix in observation space.
+    B : ndarray of shape (n, n)
+        Background error covariance matrix.
+    R : ndarray of shape (nobs, nobs)
+        Observation error covariance matrix.
+    obs_indices : ndarray of shape (n, nobs)
+        Localization mask: 1 if obs i is used for grid point l, else 0.
     option : str
-        'ens' or 'vec'
-        Estimate the DFS using ensemble perturbations, or estimate the DFS 
-        using the weighting vector and return O-B, O-A and A-B vectors.
-        
+        'HK' to estimate theoretical DFS;
+        'assimilation' to returns innovation, residual and increment vectors.
+
     Returns
-    ------- 
-    DFS : nobs x 1 array
-        Theoretical DFS.
-    count : nobs x 1 array
-        How many times each observation has been used.
-    omb : nobs x 1 array
-        The innovation (O-B) vector.
-    oma : nobs x 1 array
-        The residual (O-A) vector.
-    amb : nobs x 1 array
-        The observation-space increment vector.    
-    np.std(erra)) : float
-        Standard deviation of the analysis error at model grid points.
+    -------
+    If option == 'HK':
+        DFS : ndarray of shape (nobs,)
+            Theoretical DFS estimate from trace(HK).
+
+    If option == 'assimilation':
+        omb : ndarray of shape (nobs,)
+            Innovation vector (observation - background).
+        oma : ndarray of shape (nobs,)
+            Residual vector (observation - analysis).
+        amb : ndarray of shape (nobs,)
+            Observation-space increment (analysis - background).
+        erra_std : float
+            Standard deviation of analysis error at model grid points.
     """
-    
-    DFS  = np.zeros(nobs)      
 
-    # Times of each observations used 
-    count = np.zeros((nobs))   
-    
-    # Generate the background error, observation error and innovation vectors
-    errb, erro, _, d = innovation(n, nobs, B, R, xlon, xlat, ylon, ylat, interpolator)
-    
-    erra = errb.copy()
+    nobs = grid["nobs"]
+    xlon, xlat, ylon, ylat = grid["xlon"], grid["xlat"], grid["ylon"], grid["ylat"]
+    n = args.n
+    interpolator = args.interpolator
 
-    # Generate ensemble members
-    obs_pert, d_ens, errb_ens = generate_ensemble_members(n, nobs, N, xlon, xlat, ylon, ylat, Xb, R, d, errb, interpolator)
+    match option:
+    
+        case "HK":
+            _, _, _, d = innovation(n, nobs, B, R, xlon, xlat, ylon, ylat, interpolator)
 
-    # Loop over model grid points
-    for l in range(n):
+            DFS  = np.zeros(nobs)  
         
-        if obs_indices[l,:].any():
+            # Loop over model grid points
+            for l in range(n):
+                if obs_indices[l, :].any():
+                    Yb_l, d_l, R_l, index = get_local_matrices(Yb, d, R, obs_indices[l, :])
+                    YbYb = Yb_l @ Yb_l.T
+                    work_Yb = YbYb @ inv(YbYb + (nens - 1) * R_l)
+                    for i in range(len(index)):
+                        DFS[index[i]] += work_Yb[i, i]
+            return(DFS)
     
-            # Indices of observations selected for the n-th grid point
-            index = np.nonzero(obs_indices[l,:])[0]
-            
-            # Number of observations for the l-th grid point
-            nobs_l = len(index) 
-                      
-            Yb_l = Yb[index,:]
-            d_l = d[index]
-            R_l = R[index,:][:,index]
+        case "assimilation":
+            errb, erro, _, d = innovation(n, nobs, B, R, xlon, xlat, ylon, ylat, interpolator)
+            erra = errb.copy()
 
-            if option == "ens":
-                YbYb = Yb_l @ Yb_l.T
-                work_Yb = YbYb @ inv(YbYb + (N - 1) * R_l)
-                for i in range(nobs_l):
-                    count[index[i]] += 1
-                    DFS[index[i]] += work_Yb[i,i]
+            # Generate ensemble members
+            obs_pert, d_ens, errb_ens = generate_ensemble_members(
+                n, nobs, nens, xlon, xlat, ylon, ylat, Xb, R, d, errb, interpolator
+            )
+
+            for l in range(n):
+                if obs_indices[l, :].any():
+                    Yb_l, d_l, R_l, index = get_local_matrices(Yb, d, R, obs_indices[l, :])
+                    d_ens_l = d_ens[index, :]
+                    _, erra[l], _ = enkf(
+                        nens, Xb[l, :], Yb_l, R_l, d_l, errb[l], d_ens_l, errb_ens[l, :]
+                    )
                     
-            if option == 'vec':
-                d_ens_l = d_ens[index,:]
-                _, erra[l], K = enkf(N, Xb[l,:], Yb_l, R_l, d_l, errb[l], d_ens_l, errb_ens[l,:])
-                                    
-    if option == "ens":
-        return(DFS, count)
-    
-    if option == "vec":
-        # The innovation, residual and increment vectors  
-        ya = H_operator_linear(xlon, xlat, erra, interpolator)
-        
-        omb = d + np.mean(obs_pert,axis=1)
-        oma = erro - ya(ylon, ylat) + np.mean(obs_pert, axis=1)
-        # Require linear observation operator
-        amb = d - oma 
-            
-        return(omb, oma, amb, np.std(erra))
+            # Compute innovation, residual, and increment in observation space
+            ya = H_operator_linear(xlon, xlat, erra, interpolator)
+            omb = d + np.mean(obs_pert, axis=1)              # O - B
+            oma = erro - ya(ylon, ylat) + np.mean(obs_pert, axis=1)  # O - A
+            amb = d - oma                                    #  A - B
+            erra_std = np.std(erra)
+                
+            return omb, oma, amb, erra_std
