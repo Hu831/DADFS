@@ -1,68 +1,81 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Print results on screen and save results 
-
-Author: Guannan Hu
-"""
-
 import numpy as np
 import pandas as pd
 
-def output(DFS_Ya, DFS_d_act, DFS_d_theo, DFS_w_avg, DFS_d_alt, count, erra, save, distrib, N, Nd, r, DA_method, rseed_obs, corr_o, l_o, ylon, ylat):
-    """Print and save results.
+def output(
+    DFS_Ya, DFS_d_act, DFS_d_theo, DFS_w, DFS_d_alt,
+    DFS_Ya_B, DFS_d_theo_B, DFS_d_act_B, DFS_d_alt_B,
+    DFS_HO, count, erra, save, distrib, nens, Nd, r, 
+    DA_method, rseed_obs, corr_o, l_o, ylon, ylat
+):
     
+    """
+    Print and optionally save DFS diagnostics and RMSE.
+
     Parameters
     ----------
-    DFS_Ya : nobs x 1 array
-        The theoretical DFS estimated using the ensemble perturbation approach.
-    DFS_d_act : nobs x 1 array
-        The actual DFS estimated using the innovation-based approach.
-    DFS_d_theo : nobs x 1 array
-        The theoretical DFS estimated using the innovation-based approach.
-    DFS_w_avg : nobs x 1 array
-        The actual DFS estimated using the weighting-vector-based approach.
-    DFS_d_alt : nobs x 1 array
-        The theoretical DFS estimated using the new innovation-based approach.
-    count : nobs x 1 array
-        The number of grid points each observation has been used for.
-    erra : n x 1 array
-        The analysis error at each model grid point.
+    DFS_Ya : ndarray of shape (nobs,)
+        Theoretical DFS using ensemble perturbation approach.
+    DFS_d_act : ndarray of shape (nobs,)
+        Actual DFS (innovation-based).
+    DFS_d_theo : ndarray of shape (nobs,)
+        Theoretical DFS (innovation-based).
+    DFS_w : ndarray of shape (nobs,)
+        Actual DFS using weighting vector.
+    DFS_d_alt : ndarray of shape (nobs,)
+        Theoretical DFS (alternative innovation-based).
+    DFS_Ya_B : ndarray of shape (nobs,)
+        DFS_Ya estimated using true B.
+    DFS_d_theo_B : ndarray of shape (nobs,)
+        DFS_d_theo estimated using true B.
+    DFS_d_act_B : ndarray of shape (nobs,)
+        DFS_d_act estimated using true B.
+    DFS_d_alt_B : ndarray of shape (nobs,)
+        DFS_d_alt estimated using true B.
+    DFS_HO : ndarray of shape (nobs,)
+        Theoretical DFS from Hotta & Ota strategy.
+    count : ndarray of shape (nobs,)
+        Number of grid points each observation is used for.
+    erra : ndarray of shape (n,)
+        Analysis error at model grid points.
     save : int
-        Save results if '1'.
+        1 to save results to CSV; 0 otherwise.
     distrib : int
-        One of {'1', '2', '3', '4', '5'}
-        Spatial distributions of observations: 1 - On randomly selected model 
-        grid points; 2 - Uniform distribution; 3 - Gaussian distribution
-        4 - Slightly off model grid; 5 - Regularly on model grid.
-    N : int
+        Observation distribution type (1–5).
+    nens : int
         Ensemble size.
     Nd : int
-        Sample size for the innovation-based and weighting-vector-based 
-        approaches.
+        Sample size.
     r : int
         Localization radius.
     DA_method : str
-        'LETKF' or 'EnKF'
+        Data assimilation method: 'LETKF' or 'EnKF'.
     rseed_obs : int
-        Random number seed.
+        Random seed used for generating observations.
+    corr_o : str
+        Observation error correlation type (e.g., 'diag').
     l_o : float
-        Observation error correlation lengthscale.
-    ylon : nobs x 1 array
-        Longitudes of observations.
-    ylat : nobs x 1 array
-        Latitudes of observations.
+        Correlation length scale (used if corr_o ≠ 'diag').
+    ylon, ylat : ndarray of shape (nobs,)
+        Longitude and latitude of observations.
     """
+    
+    # Avoid division by zero by replacing zeros with 1 (for safe averaging)
+    safe_count = np.where(count == 0, 1, count)
     
     print('-----')
     print('The DFS for all observations:')
-    print('DFS_Ya:', sum(DFS_Ya / count))
-    print('DFS_d_act:', sum(DFS_d_act / count))
-    print('DFS_d_theo:', sum(DFS_d_theo / count))
-    print('DFS_w:', sum(DFS_w_avg / count))
-    print('DFS_d_alt:', sum(DFS_d_alt / count))
+    print(f'DFS_Ya:      {np.sum(DFS_Ya / safe_count):.4f}')
+    print(f'DFS_d_act:   {np.sum(DFS_d_act / safe_count):.4f}')
+    print(f'DFS_d_theo:  {np.sum(DFS_d_theo / safe_count):.4f}')
+    print(f'DFS_w:       {np.sum(DFS_w / safe_count):.4f}')
+    print(f'DFS_d_alt:   {np.sum(DFS_d_alt / safe_count):.4f}')
+    print(f'DFS_Ya_B:    {np.sum(DFS_Ya_B / safe_count):.4f}')
+    print(f'DFS_d_theo_B:{np.sum(DFS_d_theo_B / safe_count):.4f}')
+    print(f'DFS_d_act_B: {np.sum(DFS_d_act_B / safe_count):.4f}')
+    print(f'DFS_d_alt_B: {np.sum(DFS_d_alt_B / safe_count):.4f}')
+    print(f'DFS_HO:      {np.sum(DFS_HO):.4f}')
     print('-----')
-    print('Analysis RMSE:', np.mean(erra))
+    print(f'Analysis RMSE: {np.mean(erra):.4f}')
 
     # Save data
     if save == 1:
@@ -72,20 +85,25 @@ def output(DFS_Ya, DFS_d_act, DFS_d_theo, DFS_w_avg, DFS_d_alt, count, erra, sav
             'lon': ylon,
             'lat': ylat, 
             'Ya': DFS_Ya,
-            'w': DFS_w_avg,
+            'w': DFS_w,
             'd_theo': DFS_d_theo, 
             'd_act': DFS_d_act, 
             'd_alt': DFS_d_alt,
+            'Ya_B': DFS_Ya_B,
+            'd_theo_B': DFS_d_theo_B, 
+            'd_act_B': DFS_d_act_B, 
+            'd_alt_B': DFS_d_alt_B,
+            'HO': DFS_HO,
             'count': count,
             "erra": np.mean(erra)
         })
         
-        filename = f'DFS_dist{distrib}_N{N}_Nd{Nd}_r{r}_{DA_method}_{rseed_obs}.csv'
-        if corr_o != 'diag':
-            filename = f'DFS_dist{distrib}_N{N}_Nd{Nd}_r{r}_{DA_method}_{l_o}km_{rseed_obs}.csv'
-
-
+        # Construct filename based on options
+        if corr_o == 'diag':
+            filename = f'DFS_dist{distrib}_N{nens}_Nd{Nd}_r{r}_{DA_method}_{rseed_obs}.csv'
+        else:
+            filename = f'DFS_dist{distrib}_N{nens}_Nd{Nd}_r{r}_{DA_method}_{l_o}km_{rseed_obs}.csv'
+        
         print('-----')
         print('Saved to:', filename)
-
-        df.to_csv('DFS_' + filename, index=False)
+        df.to_csv(filename, index=False)
