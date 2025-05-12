@@ -28,6 +28,6 @@ This project implements the following DA algorithms:
 
 ## Approaches for estimating the DFS
 ***
-Ensemble-based, innovation-based and weighting-vector-based approaches are implemented to estimate both the theoretical and actual DFS, as described in the submitted paper. These include both novel approaches proposed by the authors and established approaches from the literature.
+Ensemble-based, innovation-based and weighting-vector-based approaches are implemented to estimate both the theoretical and actual DFS. These approaches are described in the submitted paper, including novel approaches proposed by the authors and established approaches from the literature.
 
 In addition, the code includes a new strategy proposed by the authors for efficiently implementing DFS estimation approaches in the presence of domain localization.
