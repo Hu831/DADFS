@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-The ETKF data assimilation algortithm
-
-Author: Guannan Hu
-
-"""
-
 import numpy as np
 from numpy.linalg import inv
 from numpy.linalg import eigh
