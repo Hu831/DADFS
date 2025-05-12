@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-The EnKF data assimilation algorithm
-
-Author: Guannan Hu
-"""
-
 import numpy as np
 from numpy.linalg import eigh
 
@@ -59,9 +51,3 @@ def enkf(N, Xb, Yb, R, d, errb, d_ens, errb_ens):
             erra_ens[:,k] = errb_ens[:,k] + K @ d_ens[:,k]
         erra_mean = np.mean(erra_ens,axis=1)
         return(erra_ens, erra_mean, K)
- 
-   
-    
-
-
-
