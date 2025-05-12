@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+title: "DADFS: A Framework for Idealised Data Assimilation and Degrees of Freedom for Signal Experiments"
+authors:
+  - family-names: Hu
+    given-names: Guannan
+    orcid: https://orcid.org/0000-0003-4305-3658
+    affiliation: University of Reading; National Centre for Earth Observation (NCEO)
+date-released: 2025-05-12
+version: 1.0.0
+repository-code: https://github.com/Hu831/DADFS
+url: https://zenodo.org/record/15388900
+doi: 10.5281/zenodo.15388900
+license: MIT
+keywords:
+  - Ensemble-based data assimilation
+  - Observation influence
+  - Degrees of freedom for signal
+abstract: >
+  This repository provides a framework for conducting numerical experiments on data assimilation (DA) 
+  and the estimation of degrees of freedom for signal (DFS) for observations, as described in a submitted manuscript 
+  (Hu et al., 2025). The framework supports the LETKF and EnKF DA algorithms as well as ensemble-based, 
+  innovation-based, and weighting-vector-based DFS estimation approaches. It is intended for researchers 
+  studying the influence of observations in ensemble-based DA systems. The experiments can be reproduced by 
+  running the `main_dadfs.py` script with customizable parameters.
