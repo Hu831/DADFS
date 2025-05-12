@@ -1,18 +1,9 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Generation of the background error vector, the observation error vector and 
-the innovation vector
-
-Author: Guannan Hu
-"""
-
 import numpy as np
 from H_operator_linear import H_operator_linear
 
 def innovation(n, nobs, B, R, xlon, xlat, ylon, ylat, interpolator):
     """ Generate random numbers from Gaussian distribution with zero mean and 
-    covariances given by matrices B and R.
+    covariances given by matrices B or R, and generate innovation vectors.
     
     Parameters
     ----------
