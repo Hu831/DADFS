@@ -1,62 +1,60 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Generate the ensemble perturbation matrix and ensemble perturbation matrix in
-observation space
-
-Author: Guannan Hu
-
-"""
-
 import numpy as np
 from H_operator_linear import H_operator_linear
 
-def XbYb(n, nobs, N, B, xlon, xlat, ylon, ylat, interpolator):
-    """Generate the ensemble perturbation matrix (Xb) using the background 
-    error covariance matrix and the ensemble perturbation matrix in observation
-    space (Yb) using an observation operator.
-    
+def XbYb(args, grid, nens, B,):
+    """
+    Generate ensemble perturbation matrices in model and observation space.
+
+    This function generates an ensemble of background perturbations `Xb` using 
+    a specified background error covariance matrix `B`. It also applies an 
+    observation operator to each ensemble member to generate `Yb`, the 
+    perturbations projected into observation space.
+
     Parameters
     ----------
-    n : int
-        Number of model grid points.
-    nobs : int
-        Number of observations.
-    N : int
+    args : ExperimentConfig
+        A configuration object that provides:
+            - n : number of model grid points
+            - interpolator : type of interpolation (e.g., 'linear', 'nearest')
+            - rseed_ctrl   : random seed for reproducibility
+            
+    grid : dict
+        - xlon : longitudes for all model grid points.
+        - xlat : latitudes for all model grid points.
+        - ylon : longitudes for observation locations.
+        - ylat : latitudes for observation locations.
+        - nobs : number of observation points 
+
+    nens : int
         Ensemble size.
-    B : numpy.ndarray
-        The background error covariance matrix.
-    xlon : n x 1 array
-        Longitudes of model grid points.
-    xlat : n x 1 array
-        Latitude of model grid points.
-    ylon : nobs x 1 array
-        Longitudes of observations.
-    ylat : nobs x 1 array
-        Latitudes of observations.
-    interpolator : str
-        'linear' or 'nearest'
-        Interpolation; Observation operator.
+    B : ndarray of shape (n, n)
+        Background error covariance matrix.
 
     Returns
     -------
-    Xb : n x N matrix
-        The ensemble perturbation matrix 
-    Yb : nobs x N matrix
-        The ensemble perturbation matrix in observation space
+    Xb : ndarray of shape (n, N)
+        Ensemble perturbation matrix in model space.
+    Yb : ndarray of shape (nobs, N)
+        Ensemble perturbation matrix in observation space.
     """
     
-    # The ensemble perturbation matrix
-    Xb = np.random.multivariate_normal([0] * n, B, N).T
-    sample_mean = np.mean(Xb, axis=1)
+    np.random.seed(args.rseed_ctrl)
     
-    # The ensemble perturbation matrix in observation space
-    Yb = np.zeros(shape=(nobs, N))
+    # Generate ensemble samples from multivariate normal distribution ~ N(0, B)
+    Xb = np.random.multivariate_normal(mean=np.zeros(args.n), cov=B, size=nens).T
 
-    for k in range(N):
-        # Remove bias due to sampling error 
-        Xb[:, k] = Xb[:, k] - sample_mean  
-        h = H_operator_linear(xlon, xlat, Xb[:, k], interpolator)
-        Yb[:, k] = h(ylon, ylat)
+    # Compute the sample mean to remove sampling bias
+    sample_mean = np.mean(Xb, axis=1)
+
+    # Allocate memory for the perturbation matrix in observation space
+    Yb = np.zeros((grid["nobs"], nens))
+    
+    for k in range(nens):
+        # Subtract mean from each member to center ensemble
+        Xb[:, k] -= sample_mean
+
+        # Apply the linear observation operator to obtain observation space perturbations
+        h = H_operator_linear(grid["xlon"], grid["xlat"], Xb[:, k], args.interpolator)
+        Yb[:, k] = h(grid["ylon"], grid["ylat"])
         
-    return(Xb, Yb)
+    return Xb, Yb
