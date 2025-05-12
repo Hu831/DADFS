@@ -9,6 +9,8 @@
  The code is used to generate the numerical results presented in:
  Hu et al. (2025), revised and submitted.
 
+ Author: Guannan Hu
+
 ====================================================================================
 '''
 
